@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "khmerApp",
+    "slug": "khmerapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "khmerapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chanhda.khmerapp"
+    },
+    "android": {
+      "package": "com.chanhda.khmerapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#131313",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#131313",
+          "dark": {
+            "backgroundColor": "#131313"
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "90673e8c-6b91-4450-93ed-3b43f996ab2b"
+      }
+    },
+    "owner": "chanhda",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/90673e8c-6b91-4450-93ed-3b43f996ab2b"
+    }
+  }
+}

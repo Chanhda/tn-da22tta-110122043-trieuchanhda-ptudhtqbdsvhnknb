@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ── 🛠️ Helper Functions (Hàm trợ giúp phân quyền) ──
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Admin: có role 'admin' trong Firestore HOẶC email thuộc nhóm đặc biệt
+    function isAdmin() {
+      return isSignedIn() && (
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+             (request.auth.token.email != null && (
+               request.auth.token.email.matches('trieuchanhda.*') ||
+               request.auth.token.email.matches('chanhda.*') ||
+               request.auth.token.email.matches('admin.*') ||
+               request.auth.token.email.endsWith('@khmerheritage.com')
+             ))
+      );
+    }
+
+    // Staff: Admin hoặc Phó quản trị viên (moderator)
+    function isStaff() {
+      return isSignedIn() && (
+             isAdmin() ||
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator'
+      );
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // ── 📅 Festivals (Lịch Lễ Hội) - Public read, Staff write ──
+    match /festivals/{festivalId} {
+      allow read: if true;  // Mọi người đều xem được danh sách lễ hội
+      allow create, update, delete: if isStaff();  // Admin và Phó quản trị viên thêm/sửa/xóa lễ hội
+    }
+
+    // ── 📂 Categories (Danh mục) - Public read, Admin write ──
+    match /categories/{categoryId} {
+      allow read: if true;  // Mọi người đều xem được
+      allow create, update, delete: if isAdmin();  // Chỉ admin mới thêm/sửa/xóa
+    }
+    
+    // ── 🏛️ Heritages (Di sản) - Public read, Admin write, Public views/likes ──
+    match /heritages/{heritageId} {
+      allow read: if true;  // Mọi người đều xem được
+      allow create, delete: if isAdmin();  // Chỉ admin mới thêm/xóa
+      allow update: if isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likes']);
+    }
+
+    // ── 📰 Articles (Bài viết) - Public read, Author pending write, Admin full write ──
+    match /articles/{articleId} {
+      allow read: if true;
+      
+      // Admin tạo mọi bài viết. User đã đăng nhập tạo bài viết chờ duyệt (pending).
+      allow create: if isAdmin() || (
+        isSignedIn() && 
+        request.resource.data.published == false &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.authorId == request.auth.uid
+      );
+      
+      // Admin sửa/xóa mọi bài viết. User sửa bài chưa duyệt của chính mình hoặc tăng lượt xem/thích.
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.authorId == request.auth.uid &&
+        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.published == false &&
+        request.resource.data.status == 'pending'
+      ) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likes']);
+      
+      allow delete: if isAdmin();
+    }
+
+    // ── 👤 Users (Người dùng) - User read/write own data, Admin read/update all ──
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isStaff();  // Staff (Admin + Moderator) đọc được danh sách user
+      allow create: if isSignedIn();
+      allow update: if isOwner(userId) || isAdmin();  // Admin cập nhật được role của user khác
+      allow delete: if isAdmin();
+    }
+    
+    // ── 🖼️ Media (Hình ảnh/Tệp tin) - Public read, Admin write ──
+    match /media/{mediaId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ── 💬 Comments (Bình luận) - Public read, Signed-in create, Owner/Admin manage ──
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+  }
+}
